@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    container_name: doc-qora-postgres
+    restart: unless-stopped
+
+    ports:
+      - "5434:5432"
+
+    environment:
+      POSTGRES_DB: docqora
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+    volumes:
+      - docpgdata:/var/lib/postgresql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d docqora"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  docpgdata:

@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: docqora
+
+  profiles:
+    active: dev
+
+server:
+  port: 8081

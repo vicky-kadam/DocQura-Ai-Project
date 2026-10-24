@@ -1,0 +1,84 @@
+
+  spring:
+    datasource:
+      url: jdbc:postgresql://localhost:5434/docqora
+      username: postgres
+      password: ${DB_PASSWORD:postgres}
+      driver-class-name: org.postgresql.Driver
+
+    jpa:
+      hibernate:
+        ddl-auto: update
+      show-sql: false
+      properties:
+        hibernate:
+          format_sql: true
+
+    #  ai:
+    #    openai:
+    #      api-key: ${OPENAI_API_KEY:demo-key}
+    #
+    #      chat:
+    #        options:
+    #          model: ${OPENAI_MODEL}
+    #          temperature: 0.2
+    #
+    #      embedding:
+    #        options:
+    #          model: text-embedding-3-small
+    #
+    #    vectorstore:
+    #      pgvector:
+    #        initialize-schema: true
+    #        index-type: HNSW
+    #        distance-type: COSINE_DISTANCE
+    #        dimensions: 1536
+    #        table-name: vector_store
+    #
+    #  servlet:
+    #    multipart:
+    #      max-file-size: 25MB
+    #      max-request-size: 50MB
+
+    ai:
+      model:
+        chat: ollama
+        embedding: ollama
+      ollama:
+        base-url: http://localhost:11434
+        init:
+          pull-model-strategy: when_missing   # model apne aap download ho jayega
+        chat:
+          options:
+            model: llama3.2:3b
+            temperature: 0.2
+        embedding:
+          options:
+            model: nomic-embed-text
+
+      vectorstore:
+        pgvector:
+          initialize-schema: true
+          index-type: HNSW
+          distance-type: COSINE_DISTANCE
+          dimensions: 768          # 1536 nahi, 768 karna zaroori hai
+          table-name: vector_store
+
+  app:
+    rag:
+      chunk-size: 700
+      #    chunk-overlap: 100
+      top-k: 5
+      similarity-threshold: 0.0
+
+    cors:
+      allowed-origins: "*"
+      allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+      allowed-headers: "*"
+
+  logging:
+    level:
+      root: INFO
+      com.docqora: DEBUG
+      org.springframework.ai: INFO
+
