@@ -1,6 +1,8 @@
 package com.vicky.docqora.controller;
 
 import com.vicky.docqora.dto.ApiResponse;
+import com.vicky.docqora.dto.ChatRequestDto;
+import com.vicky.docqora.dto.DocumentMetaDto;
 import com.vicky.docqora.dto.DocumentResponseDto;
 import com.vicky.docqora.Service.DocumentMetaDataService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,8 +14,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.swing.text.Document;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
@@ -60,6 +64,51 @@ public class DocumentController {
                 );
 
     }
+
+    @GetMapping
+    @Operation(summary = "Get all stored documents"
+            )
+    public ResponseEntity<ApiResponse<List<DocumentMetaDto>>> getAllDocuments(){
+        List<DocumentMetaDto> document =  documentMetaDataService.getAllDocuments();
+        return ResponseEntity.ok(
+                ApiResponse.<List<DocumentMetaDto>>builder()
+                        .message("document fetch successfully from the database")
+                        .success(true)
+                        .time(LocalDateTime.now())
+                        .data(document)
+                        .build()
+        );
+    }
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<DocumentMetaDto>> getDocumentById(@PathVariable UUID id){
+        DocumentMetaDto documentResponseDto = documentMetaDataService.getDocumentById(id);
+        return ResponseEntity.ok(
+                ApiResponse.<DocumentMetaDto>builder()
+                        .message("document fetch successfully from the database")
+                        .success(true)
+                        .time(LocalDateTime.now())
+                        .data(documentResponseDto)
+                        .build()
+        );
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteDocumentById(@PathVariable UUID id){
+        documentMetaDataService.deleteById(id);
+        return ResponseEntity.ok(
+                ApiResponse.<Void>builder()
+                        .message("document deleted SuccessFully  successfully from the database")
+                        .success(true)
+                        .time(LocalDateTime.now())
+                        .data(null)
+                        .build()
+        );
+    }
+
+
+
+
+
 
 
 }

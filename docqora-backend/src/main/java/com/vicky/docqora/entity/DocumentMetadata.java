@@ -44,8 +44,4 @@ public class DocumentMetadata {
         updatedAt = now;
     }
 
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }

@@ -1,24 +1,33 @@
 package com.vicky.docqora.Service;
 
+import com.vicky.docqora.dto.DocumentMetaDto;
 import com.vicky.docqora.dto.DocumentResponseDto;
 import com.vicky.docqora.entity.DocumentMetadata;
 import com.vicky.docqora.entity.DocumentStatus;
+import com.vicky.docqora.exception.DocumentNotFoundException;
+import com.vicky.docqora.mapper.DocumentMapper;
 import com.vicky.docqora.repository.DocumentMetaDataRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
+import org.springframework.boot.context.config.ConfigDataResourceNotFoundException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class DocumentMetaDataService {
 
     private static final Logger logger = LoggerFactory.getLogger(DocumentMetaDataService.class);
+    private final DocumentMapper documentMapper;
+    private final JdbcTemplate jdbcTemplate;
 
     private final DocumentMetaDataRepository documentMetaDataRepository;
     private final DocumentParserService documentParserService;
@@ -70,4 +79,43 @@ public class DocumentMetaDataService {
         }
         return responseDtos;
     }
-}
+
+    public List<DocumentMetaDto> getAllDocuments() {
+        List<DocumentMetadata> all = documentMetaDataRepository.findAllByOrderByCreatedAtDesc();
+
+        return all.stream()
+                .map(documentMapper::toDto)
+                .toList();
+    }
+
+    public DocumentMetaDto getDocumentById(UUID id) {
+        if (!documentMetaDataRepository.existsById(id)){
+            throw new DocumentNotFoundException("Document not found with this id" + id);
+        }
+        DocumentMetadata documentMetadata = documentMetaDataRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Document not found"));
+        return documentMapper.toDto(documentMetadata);
+    }
+
+    @Transactional
+    public void deleteById(UUID id) {
+        if (!documentMetaDataRepository.existsById(id)){
+            throw new DocumentNotFoundException("Document not found with this id" + id);
+        }
+        DocumentMetadata documentMetadata = documentMetaDataRepository.findById(id).orElseThrow(() -> new RuntimeException("Document with given id not found !!"));
+
+
+        documentMetaDataRepository.delete(documentMetadata);
+        //delete the vector entries
+        try {
+            String deleteVectorsSql = "DELETE FROM vector_store WHERE metadata->>'documentId' = ?";
+            int deletedCount = jdbcTemplate.update(deleteVectorsSql, id.toString());
+            logger.info("Deleted {} vector chunks for document id {} ", deletedCount, id);
+
+        } catch (Exception e) {
+            logger.warn("cloud not delete vectors from vector store directly: {}", e.getMessage());
+        }
+
+    }
+    }
+

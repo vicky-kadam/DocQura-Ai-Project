@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 
 public class RagService {
     private final VectorStore vectorStore;
+    private static final String NOT_FOUND_MSG = "Sorry, I couldn't find the answer to this in the document. Try asking something about the content of the uploaded file.";
     private final AppProperties appProperties;
     private final ChatClient chatClient;
 
@@ -78,42 +79,28 @@ public class RagService {
 
     }
 
-     private String buildPrompt(@NotBlank(message = "Question cannot be empty") String question, String contextText) {
+    private String buildPrompt(@NotBlank(message = "Question cannot be empty") String question,
+                               String contextText) {
+        return String.format("""
+            Read the text below and answer the question using only this text.
+            Answer in 1 or 2 short sentences.
 
-        if (contextText != null && !contextText.isBlank()) {
-            return String.format("""
-                           Document Context:
-                           ---------------------
-                           %s
-                           ---------------------                                       \s
-                           User Message / Question: %s            \s
-                           Instructions:
-                           - If the user's question relates to the document context above, prioritize answering using that context and reference key sections.
-                           - If the user is asking a general question, greeting, or discussing topics beyond the document context, respond helpfully and conversationally using your general knowledge while weaving in relevant document context if applicable
-                   \s
-                   \s""", contextText, question);
-        } else {
-            return String.format("""
-                       User Message / Question:
-                       %s                        \s
-                       Instructions:
-                          - Respond helpfully, accurately, and conversationally to the user's message using your broad knowledge base.
-                   \s
-                   \s""", question);
-        }
+            Text:
+            %s
 
-
+            Question: %s
+            Answer:
+            """, contextText, question);
     }
-
     private String buildContextText(List<Document> similarDocuments) {
         if(similarDocuments == null || similarDocuments.isEmpty()){
             return "";
         }
         return similarDocuments.stream()
                 .map(doc ->{
-                    String fileName= (String) doc.getMetadata().getOrDefault("fileName","Unknown File");
+                    String fileName = String.valueOf(doc.getMetadata().getOrDefault("fileName", "Unknown File"));
                     Object page = doc.getMetadata().getOrDefault("pageNumber",doc.getMetadata().getOrDefault("page_number","N/A"));
-                    return String.format("{source: %s | Page: %s]\n%s",fileName,page,doc.getMetadata());
+                    return String.format("[Source: %s | Page: %s]%n%s", fileName, page, doc.getText());
                 })
                 .collect(Collectors.joining("\n\n--\n\n"));
 
@@ -141,17 +128,26 @@ public class RagService {
 
     private CitationDto mapToCitation(Document document) {
         Map<String,Object> meta = document.getMetadata();
+//        UUID docId = null;
+//        if((boolean) meta.get("documentId" !=  null)){
+//            try {
+//                docId  = UUID.fromString(meta.get("documentID").toString());
+//
+//            }
+//
+//            catch (Exception e) {
+//                log.error("Error while parsing document ID", e);
+//            }
+//
+//        }
         UUID docId = null;
-        if((boolean) meta.get("documentId" !=  null)){
+        Object rawId = meta.get("documentId") != null ? meta.get("documentId") : meta.get("documentID");
+        if (rawId != null) {
             try {
-                docId  = UUID.fromString(meta.get("documentID").toString());
-
-            }
-
-            catch (Exception e) {
+                docId = UUID.fromString(rawId.toString());
+            } catch (Exception e) {
                 log.error("Error while parsing document ID", e);
             }
-
         }
 
         Integer chunkIndex = null;
@@ -194,7 +190,7 @@ public class RagService {
         }
         if (documentID != null) {
             FilterExpressionBuilder b = new FilterExpressionBuilder();
-            searchRequest.filterExpression(b.eq("documentID", documentID.toString()).build());
+            searchRequest.filterExpression(b.eq("documentId", documentID.toString()).build());;
         }
 
     try {
