@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/chat")
+@RequestMapping("/api/v1/chat")
 public class ChatController
 {
     private final RagService ragService;

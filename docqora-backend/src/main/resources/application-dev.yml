@@ -50,7 +50,7 @@
           pull-model-strategy: when_missing   # model apne aap download ho jayega
         chat:
           options:
-            model: llama3.2:1b
+            model: llama3.2:3b
             temperature: 0.2
         embedding:
           options:
@@ -81,4 +81,11 @@
       root: INFO
       com.docqora: DEBUG
       org.springframework.ai: INFO
+
+
+
+  jwt:
+    secret: ${JWT_SECRET:kjndxfijhbnibvjfubvsdiyfbsdfydsbfuyvfudfvuvcfctfvftvtfvftvfvyytfyttfycfchg0}
+    expiration: 3600000
+
 
