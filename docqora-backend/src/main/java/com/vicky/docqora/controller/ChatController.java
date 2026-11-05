@@ -2,10 +2,12 @@ package com.vicky.docqora.controller;
 
 import com.vicky.docqora.Service.RagService;
 import com.vicky.docqora.dto.*;
+import com.vicky.docqora.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,8 +26,9 @@ public class ChatController
 
     @PostMapping("/query")
     @Operation(summary = "Ask question againsts all documentsor a specific document with citation")
-    public ResponseEntity<ApiResponse<ChatResponseDto>> askQuestion(@Valid @RequestBody ChatRequestDto chatRequestDto){
-        ChatResponseDto chatResponseDto = ragService.askQuestions(chatRequestDto);
+    public ResponseEntity<ApiResponse<ChatResponseDto>> askQuestion(@Valid @RequestBody ChatRequestDto chatRequestDto, Authentication authentication){
+        User user = (User) authentication.getPrincipal();
+        ChatResponseDto chatResponseDto = ragService.askQuestions(chatRequestDto,user);
         return ResponseEntity.ok(
                 ApiResponse.<ChatResponseDto>builder()
                         .success(true)
@@ -38,13 +41,15 @@ public class ChatController
     }
 
     @PostMapping("/stream")
-    public Flux<String> streamQuestion(@Valid @RequestBody ChatRequestDto chatRequestDto){
-        return ragService.streamQuestionAnswer(chatRequestDto);
+    public Flux<String> streamQuestion(@Valid @RequestBody ChatRequestDto chatRequestDto,Authentication authentication){
+        User user = (User) authentication.getPrincipal();
+        return ragService.streamQuestionAnswer(chatRequestDto,user);
     }
 
     @PostMapping("/search/similarity")
-    public ResponseEntity<ApiResponse<SearchResultDto>> searchSimilarity(@Valid @RequestBody SearchRequestDto searchRequestDto){
-        SearchResultDto searchResultDto = ragService.searchSimilarChunks(searchRequestDto);
+    public ResponseEntity<ApiResponse<SearchResultDto>> searchSimilarity(@Valid @RequestBody SearchRequestDto searchRequestDto,Authentication authentication){
+        User user = (User) authentication.getPrincipal();
+        SearchResultDto searchResultDto = ragService.searchSimilarChunks(searchRequestDto,user);
         return ResponseEntity.ok(
                 ApiResponse.<SearchResultDto>builder()
                         .success(true)

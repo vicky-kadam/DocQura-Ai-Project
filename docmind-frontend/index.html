@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234f46e5'/><path d='M16 6l2.2 6.8L25 15l-6.8 2.2L16 24l-2.2-6.8L7 15l6.8-2.2z' fill='white'/></svg>" />
+    <meta name="theme-color" content="#0f172a" />
+    <script>
+      /* theme pehle hi lagao, taaki page load par flash na ho */
+      (function () {
+        try {
+          var t = localStorage.getItem('docqura-theme');
+          if (t !== 'light' && t !== 'dark') t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', t);
+          var m = document.querySelector('meta[name="theme-color"]');
+          if (m) m.setAttribute('content', t === 'light' ? '#f1f5f9' : '#0f172a');
+        } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DocMind – AI Document Assistant</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

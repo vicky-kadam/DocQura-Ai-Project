@@ -6,6 +6,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @AllArgsConstructor
@@ -27,6 +29,9 @@ public class User {
 
     @Column(nullable = false,unique = true)
     private String email;
+
+    @OneToMany(mappedBy = "user",cascade = CascadeType.ALL,orphanRemoval = true)
+    private Set<DocumentMetadata> documentMetadata = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
     private Role role;

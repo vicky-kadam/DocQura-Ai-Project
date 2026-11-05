@@ -4,6 +4,7 @@ import com.vicky.docqora.dto.DocumentMetaDto;
 import com.vicky.docqora.dto.DocumentResponseDto;
 import com.vicky.docqora.entity.DocumentMetadata;
 import com.vicky.docqora.entity.DocumentStatus;
+import com.vicky.docqora.entity.User;
 import com.vicky.docqora.exception.DocumentNotFoundException;
 import com.vicky.docqora.mapper.DocumentMapper;
 import com.vicky.docqora.repository.DocumentMetaDataRepository;
@@ -11,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
-import org.springframework.boot.context.config.ConfigDataResourceNotFoundException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +33,7 @@ public class DocumentMetaDataService {
     private final DocumentParserService documentParserService;
     private final DocumentIngestionService documentIngestionService;
 
-    public DocumentResponseDto uploadAndProcess(MultipartFile file) {
+    public DocumentResponseDto uploadAndProcess(MultipartFile file, User user) {
         String fileName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
         String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
         DocumentMetadata metadata = DocumentMetadata.builder()
@@ -41,6 +41,7 @@ public class DocumentMetaDataService {
                 .contentType(contentType)
                 .fileSize(file.getSize())
                 .status(DocumentStatus.UPLOADING)
+                .user(user)
                 .build();
 
         DocumentMetadata savedMetadata = documentMetaDataRepository.save(metadata);
@@ -72,16 +73,24 @@ public class DocumentMetaDataService {
         }
     }
 
-    public List<DocumentResponseDto> uploadMultipleAndProcess(List<MultipartFile> file) {
+    public List<DocumentResponseDto> uploadMultipleAndProcess(List<MultipartFile> file, User user) {
         List<DocumentResponseDto> responseDtos = new ArrayList<>();
         for (MultipartFile f : file) {
-            responseDtos.add(uploadAndProcess(f));
+            responseDtos.add(uploadAndProcess(f,user));
         }
         return responseDtos;
     }
 
     public List<DocumentMetaDto> getAllDocuments() {
         List<DocumentMetadata> all = documentMetaDataRepository.findAllByOrderByCreatedAtDesc();
+
+        return all.stream()
+                .map(documentMapper::toDto)
+                .toList();
+    }
+
+    public List<DocumentMetaDto> getAllDocumentsByUser(User user){
+        List<DocumentMetadata> all = documentMetaDataRepository.findByUserOrderByCreatedAtDesc(user);
 
         return all.stream()
                 .map(documentMapper::toDto)

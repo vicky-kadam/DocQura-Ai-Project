@@ -219,6 +219,7 @@ package com.vicky.docqora.Service;
 
 import com.vicky.docqora.config.AppProperties;
 import com.vicky.docqora.dto.*;
+import com.vicky.docqora.entity.User;
 import com.vicky.docqora.exception.DocumentProcessingException;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
@@ -227,6 +228,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -246,14 +248,15 @@ public class RagService {
     private final AppProperties appProperties;
     private final ChatClient chatClient;
 
-    public ChatResponseDto askQuestions(ChatRequestDto chatRequestDto){
+    public ChatResponseDto askQuestions(ChatRequestDto chatRequestDto,User user){
         long startTime = System.currentTimeMillis();
         log.info("Processing quesy: '{}', scoped documentId: '{}'",chatRequestDto.getQuestion(),chatRequestDto.getDocumentId());
         List<Document> similarDocuments = this.retrieveRelevantDocuments(
                 chatRequestDto.getQuestion(),
                 chatRequestDto.getDocumentId(),
                 chatRequestDto.getTopK(),
-                chatRequestDto.getMinSimilarity());
+                chatRequestDto.getMinSimilarity(),
+                user);
 
         List<CitationDto> citationDto = similarDocuments.stream()
                 .map(this::mapToCitation)
@@ -281,12 +284,13 @@ public class RagService {
 
 
     }
-    public Flux<String>streamQuestionAnswer(ChatRequestDto chatRequestDto){
+    public Flux<String>streamQuestionAnswer(ChatRequestDto chatRequestDto,User user){
         List<Document> relevantDocuments = retrieveRelevantDocuments(
                 chatRequestDto.getQuestion(),
                 chatRequestDto.getDocumentId(),
                 chatRequestDto.getTopK(),
-                chatRequestDto.getMinSimilarity()
+                chatRequestDto.getMinSimilarity(),
+                user
         );
         String context = buildContextText(relevantDocuments);
         String prompt = buildPrompt(chatRequestDto.getQuestion(), context);
@@ -336,14 +340,17 @@ public class RagService {
 
     }
 
-    public SearchResultDto searchSimilarChunks(SearchRequestDto request) {
+    public SearchResultDto searchSimilarChunks(SearchRequestDto request,User user) {
         List<Document> documents;
         try {
             documents = doSimilaritySearch(
                     request.getQuery(),
                     request.getDocumentID(),
                     request.getTopK(),
-                    request.getSimilaritySearch()
+                    request.getSimilaritySearch(),
+                    user
+
+
             );
         } catch (Exception e) {
             // Chat can silently fall back to general knowledge, but the search screen
@@ -412,9 +419,9 @@ public class RagService {
                 .build();
     }
 
-    private List<Document> retrieveRelevantDocuments(@NotBlank(message = "Query cannot be empty") String query, UUID documentID, Integer topK, Double similaritySearch) {
+    private List<Document> retrieveRelevantDocuments(@NotBlank(message = "Query cannot be empty") String query, UUID documentID, Integer topK, Double similaritySearch,User user) {
         try {
-            return doSimilaritySearch(query, documentID, topK, similaritySearch);
+            return doSimilaritySearch(query, documentID, topK, similaritySearch,user);
         } catch (Exception e) {
             log.error("Error while searching for similar documents", e);
             return List.of();
@@ -449,7 +456,7 @@ public class RagService {
         return null;
     }
 
-    private List<Document> doSimilaritySearch(String query, UUID documentID, Integer topK, Double similaritySearch) {
+    private List<Document> doSimilaritySearch(String query, UUID documentID, Integer topK, Double similaritySearch,User user) {
         int effectiveTopK = (topK != null && topK > 0) ? topK : appProperties.getRag().getTopK();
         double effectiveSimilarity = (similaritySearch != null && similaritySearch > 0) ? similaritySearch : appProperties.getRag().getSimilarityThreshold();
 
@@ -460,10 +467,18 @@ public class RagService {
         if (effectiveSimilarity > 0.0) {
             searchRequest.similarityThreshold(effectiveSimilarity);
         }
+        FilterExpressionBuilder b = new FilterExpressionBuilder();
+        Filter.Expression filterExpression;
         if (documentID != null) {
-            FilterExpressionBuilder b = new FilterExpressionBuilder();
-            searchRequest.filterExpression(b.eq("documentId", documentID.toString()).build());;
+          filterExpression =  b.and(
+                    b.eq("userId",user.getId().toString()),
+                    b.eq("documentId", documentID.toString())
+            ).build();
         }
+        else {
+            filterExpression = b.eq("userId",user.getId().toString()).build();
+        }
+        searchRequest.filterExpression(filterExpression);
 
         List<Document> documents = vectorStore.similaritySearch(searchRequest.build());
         return documents != null ? documents : List.of();
